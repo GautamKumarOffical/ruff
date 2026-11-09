@@ -1847,11 +1847,7 @@ impl<'db> Signature<'db> {
         db: &'db dyn Db,
         env: &ProgramEnvironment<'db>,
     ) -> bool {
-        let Some(receiver) = self
-            .parameters
-            .get(0)
-            .filter(|parameter| parameter.is_positional() && !parameter.inferred_annotation)
-        else {
+        let Some(annotation) = self.explicit_positional_receiver_annotation() else {
             return false;
         };
         let Some(generic_context) = self.generic_context else {
@@ -1860,7 +1856,6 @@ impl<'db> Signature<'db> {
         let Some(definition) = self.definition else {
             return false;
         };
-        let annotation = receiver.annotated_type();
 
         let mut typevars = match annotation {
             Type::TypeVar(typevar) => Either::Left(std::iter::once(typevar)),
