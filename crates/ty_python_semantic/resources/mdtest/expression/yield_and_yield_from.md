@@ -581,11 +581,11 @@ error[invalid-yield]: Yield expression type does not match annotation
 ```py
 from typing import AsyncGenerator, Generator
 
-def returns_str() -> str:  # error: [invalid-generator-return-type]
+def returns_str() -> str:  # error: [invalid-return-statement]
     x = yield 1
     reveal_type(x)  # revealed: Unknown
 
-def sync_returns_async_generator() -> AsyncGenerator[int, str]:  # error: [invalid-generator-return-type]
+def sync_returns_async_generator() -> AsyncGenerator[int, str]:  # error: [invalid-return-statement]
     x = yield 1
     reveal_type(x)  # revealed: str
 ```

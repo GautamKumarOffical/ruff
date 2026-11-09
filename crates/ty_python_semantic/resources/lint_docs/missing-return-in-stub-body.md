@@ -1,6 +1,7 @@
 ## What it does
 
-Detects functions with empty bodies that have a non-`None` return type annotation.
+Detects functions with stub-like bodies whose return type excludes `None`. ty accepts the old name
+`empty-body` and warns about the rename in configuration and inline ignores.
 
 The errors reported by this rule have the same motivation as the `missing-return-statement` rule.
 The diagnostic exists as a separate error code to allow users to disable this rule while prototyping
@@ -26,10 +27,10 @@ rather than implementations:
 ## Examples
 
 ```python
-def foo() -> int: ...  # error: [empty-body]
+def foo() -> int: ...  # error: [missing-return-in-stub-body]
 
 
-def bar() -> str:  # error: [empty-body]
+def bar() -> str:  # error: [missing-return-in-stub-body]
     """A function that does nothing."""
     pass
 ```

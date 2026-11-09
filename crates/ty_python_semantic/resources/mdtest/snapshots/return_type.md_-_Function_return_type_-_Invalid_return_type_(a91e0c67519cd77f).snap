@@ -29,7 +29,7 @@ mdtest path: crates/ty_python_semantic/resources/mdtest/function/return_type.md
 14 | 
 15 | T = TypeVar("T")
 16 | 
-17 | # error: [empty-body]
+17 | # error: [missing-return-in-stub-body]
 18 | def m(x: T) -> T: ...
 19 | 
 20 | class A[T]: ...
@@ -82,7 +82,7 @@ error[invalid-return-statement]: Return type does not match returned value
 ```
 
 ```
-error[empty-body]: Function always implicitly returns `None`, which is not assignable to return type `T@m`
+error[missing-return-in-stub-body]: Function always implicitly returns `None`, which is not assignable to return type `T@m`
   --> src/mdtest_snippet.py:18:16
    |
 18 | def m(x: T) -> T: ...

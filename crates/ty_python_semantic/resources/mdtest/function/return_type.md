@@ -67,7 +67,7 @@ class Bar(Protocol):
     def f(self) -> int: ...
 
 class Baz(Bar):
-    # error: [empty-body]
+    # error: [missing-return-in-stub-body]
     def f(self) -> int: ...
 
 T = TypeVar("T", covariant=True)
@@ -107,7 +107,7 @@ class Bar[T](ABC):
     @abstractmethod
     def g[U](self, x: U) -> U: ...
 
-# error: [empty-body]
+# error: [missing-return-in-stub-body]
 def f() -> int: ...
 @abstractmethod  # Semantically meaningless, accepted nevertheless
 def g() -> int: ...
@@ -325,7 +325,7 @@ from typing import TypeVar
 
 T = TypeVar("T")
 
-# error: [empty-body]
+# error: [missing-return-in-stub-body]
 def m(x: T) -> T: ...
 
 class A[T]: ...
@@ -424,11 +424,11 @@ def f() -> int:
     print("hello")
 ```
 
-## Configuring the old `invalid-return-type` name
+## Configuring return diagnostics
 
-The old rule name `invalid-return-type` is an alias for `invalid-return-statement`. Disabling it
-suppresses the error on the bare `return`. ty still reports the missing return on the other path and
-the incompatible annotation on the generator function.
+Disabling `invalid-return-statement` under its old name, `invalid-return-type`, suppresses type
+mismatches on explicit returns and incompatible generator annotations. ty still reports a missing
+return when the other branch falls through or when the function has a stub body.
 
 ```toml
 [rules]
@@ -440,8 +440,18 @@ def f(flag: bool) -> int:  # error: [missing-return-statement]
     if flag:
         return
 
-def numbers() -> int:  # error: [invalid-generator-return-type]
+def numbers() -> int:  # ok
     yield 1
+
+def placeholder() -> int: ...  # error: [missing-return-in-stub-body]
+```
+
+The old `empty-body` selector still suppresses a missing return in a stub body. ty warns about the
+renamed rule in the ignore comment.
+
+```py
+# error: [renamed-rule-in-ignore-comment] "Rule `empty-body` has been renamed to `missing-return-in-stub-body`"
+def unfinished() -> int: ...  # ty: ignore[empty-body]
 ```
 
 ## NotImplemented
@@ -549,7 +559,7 @@ def i() -> typing.Iterable[int]:
 def i2() -> typing.Generator[int]:
     yield from i()
 
-def j() -> str:  # error: [invalid-generator-return-type]
+def j() -> str:  # error: [invalid-return-statement]
     yield 42
 
 def invalid_return_type() -> typing.Generator[None, None, None]:
@@ -608,7 +618,7 @@ async def h() -> typing.AsyncIterator[int]:
 async def i() -> typing.AsyncIterable[int]:
     yield 42
 
-async def j() -> str:  # error: [invalid-generator-return-type]
+async def j() -> str:  # error: [invalid-return-statement]
     yield 42
 
 async def k() -> typing.AsyncGenerator[int]:
@@ -616,7 +626,7 @@ async def k() -> typing.AsyncGenerator[int]:
     return 2  # error: [invalid-syntax] "`return` with value in async generator"
 ```
 
-## Diagnostics for `empty-body` on non-protocol subclasses of protocol classes
+## Diagnostics for `missing-return-in-stub-body` on non-protocol subclasses of protocol classes
 
 <!-- snapshot-diagnostics -->
 
@@ -629,7 +639,7 @@ class Abstract(Protocol):
     def method(self) -> str: ...
 
 class Concrete(Abstract):
-    def method(self) -> str: ...  # error: [empty-body]
+    def method(self) -> str: ...  # error: [missing-return-in-stub-body]
 ```
 
 ## Diagnostics for `missing-return-statement` on dynamic type

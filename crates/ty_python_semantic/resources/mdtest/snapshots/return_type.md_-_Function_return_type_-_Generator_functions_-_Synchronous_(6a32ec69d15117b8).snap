@@ -31,7 +31,7 @@ mdtest path: crates/ty_python_semantic/resources/mdtest/function/return_type.md
 16 | def i2() -> typing.Generator[int]:
 17 |     yield from i()
 18 | 
-19 | def j() -> str:  # error: [invalid-generator-return-type]
+19 | def j() -> str:  # error: [invalid-return-statement]
 20 |     yield 42
 21 | 
 22 | def invalid_return_type() -> typing.Generator[None, None, None]:
@@ -54,10 +54,10 @@ mdtest path: crates/ty_python_semantic/resources/mdtest/function/return_type.md
 # Diagnostics
 
 ```
-error[invalid-generator-return-type]: Return type does not match returned value
+error[invalid-return-statement]: Return type does not match returned value
   --> src/mdtest_snippet.py:19:12
    |
-19 | def j() -> str:  # error: [invalid-generator-return-type]
+19 | def j() -> str:  # error: [invalid-return-statement]
    |            ^^^ expected `str`, found `types.GeneratorType`
 info: Function is inferred as returning `types.GeneratorType` because it is a generator function
 info: See https://docs.python.org/3/glossary.html#term-generator for more details

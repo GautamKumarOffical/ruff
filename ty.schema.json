@@ -576,16 +576,6 @@
             }
           ]
         },
-        "empty-body": {
-          "title": "detects functions with empty bodies that have a non-`None` return type annotation",
-          "description": "## What it does\n\nDetects functions with empty bodies that have a non-`None` return type annotation.\n\nThe errors reported by this rule have the same motivation as the `missing-return-statement` rule.\nThe diagnostic exists as a separate error code to allow users to disable this rule while prototyping\ncode. While we strongly recommend enabling this rule if possible, users migrating from other type\ncheckers may also find it useful to temporarily disable this rule on some or all of their codebase\nif they find it results in a large number of diagnostics.\n\n## Why is this bad?\n\nA function with an empty body (containing only `...`, `pass`, or a docstring) will implicitly return\n`None` at runtime. Returning `None` when the return type is non-`None` is unsound, and will lead to\nty inferring incorrect types elsewhere.\n\nFunctions with empty bodies are permitted in certain contexts where they serve as declarations\nrather than implementations:\n\n- Functions in stub files (`.pyi`)\n- Methods in Protocol classes\n- Abstract methods decorated with `@abstractmethod`\n- Overload declarations decorated with `@overload`\n- Functions in `if TYPE_CHECKING` blocks\n\n## Examples\n\n```python\ndef foo() -> int: ...  # error: [empty-body]\n\n\ndef bar() -> str:  # error: [empty-body]\n    \"\"\"A function that does nothing.\"\"\"\n    pass\n```",
-          "default": "error",
-          "oneOf": [
-            {
-              "$ref": "#/definitions/Level"
-            }
-          ]
-        },
         "escape-character-in-forward-annotation": {
           "title": "detects forward type annotations with escape characters",
           "description": "## What it does\n\nChecks for forward annotations that contain escape characters.\n\n## Why is this bad?\n\nStatic analysis tools like ty can't analyze type annotations that contain escape characters.\n\n## Example\n\n```python\ndef foo() -> \"intt\\b\": ...  # error\n```",
@@ -866,16 +856,6 @@
             }
           ]
         },
-        "invalid-generator-return-type": {
-          "title": "detects generator functions whose return annotation is incompatible with the generator object",
-          "description": "## What it does\n\nChecks whether a generator function's return annotation allows the generator object it produces.\n\n## Why is this bad?\n\nCalling a generator function produces a generator object. A synchronous generator function's\nreturn-type annotation must be a supertype of `types.GeneratorType[Never, object, Never]`, and an\nasynchronous generator function's return-type annotation must be a supertype of\n`types.AsyncGeneratorType[Never, object]`. Other return-type annotations contradict what the\nfunction does, so must be disallowed.\n\n## Examples\n\n```python\nfrom collections.abc import Generator\n\n\n# error: [invalid-generator-return-type]\ndef numbers() -> int:\n    yield 1\n\n\n# error: [invalid-generator-return-type]\nasync def numbers() -> Generator[int]:\n    yield 1\n```\n\nUse instead:\n\n```py\nfrom collections.abc import AsyncGenerator, Generator\n\n\ndef numbers() -> Generator[int]:\n    yield 1\n\n\nasync def numbers() -> AsyncGenerator[int]:\n    yield 1\n```",
-          "default": "error",
-          "oneOf": [
-            {
-              "$ref": "#/definitions/Level"
-            }
-          ]
-        },
         "invalid-generic-class": {
           "title": "detects invalid generic classes",
           "description": "## What it does\n\nChecks for the creation of invalid generic classes\n\n## Why is this bad?\n\nThere are several requirements that you must follow when defining a generic class. Many of these\nresult in `TypeError` being raised at runtime if they are violated.\n\n## Examples\n\n```toml\n[environment]\npython-version = \"3.12\"\n```\n\n```python\nfrom typing_extensions import Generic, TypeVar\n\nT = TypeVar(\"T\")\nU = TypeVar(\"U\", default=int)\n\n\n# class uses both PEP-695 syntax and legacy syntax\nclass C[U](Generic[T]): ...  # error\n\n\n# type parameter with default comes before type parameter without default\nclass D(Generic[U, T]): ...  # error\n```\n\n## References\n\n- [Typing spec: Generics](https://typing.python.org/en/latest/spec/generics.html#introduction)",
@@ -1047,8 +1027,8 @@
           ]
         },
         "invalid-return-statement": {
-          "title": "detects return statements whose value is incompatible with the expected return type",
-          "description": "## What it does\n\nChecks whether the value in a `return` statement is assignable to the function's annotated return\ntype.\n\nA bare `return` statement is equivalent to `return None` and is checked by this rule. However, cases\nwhere a code path is missing a `return` statement entirely -- leading to execution \"falling off\" the\nend of a function and the function implicitly returning `None` in that code path -- are reported by\neither `missing-return-statement` or `empty-body`.\n\nIn a generator function annotated with `Generator[YieldType, SendType, ReturnType]`, the value of a\n`return` statement must be assignable to `ReturnType`.\n\n## Why is this bad?\n\nReturning an object of a type incompatible with the annotated return type is unsound, and will lead\nto ty inferring incorrect types elsewhere.\n\n## Examples\n\n```python\nfrom collections.abc import Generator, AsyncGenerator\n\n\ndef func(coinflip: bool) -> int:\n    if coinflip:\n        return \"a\"  # error: [invalid-return-statement]\n    else:\n        return  # error: [invalid-return-statement]\n\n\ndef gen_func() -> Generator[int, None, str]:\n    yield 42\n    return b\"oops, a bytestring\"  # error: [invalid-return-statement]\n```",
+          "title": "detects incompatible return values and generator return annotations",
+          "description": "## What it does\n\nChecks for `return` statements where the value returned is inconsistent with the function's\nreturn-type annotation. It also checks whether a generator function's return annotation allows the\ngenerator object it produces.\n\nA bare `return` is equivalent to `return None`. If execution can reach the end of the function, ty\nchecks the implicit return separately with `missing-return-statement` or, for a stub-like body,\n`missing-return-in-stub-body`.\n\nIn a synchronous generator annotated with `Generator[YieldType, SendType, ReturnType]`, an explicit\n`return` must produce a value assignable to `ReturnType`.\n\nty accepts the old name `invalid-return-type` and warns about the rename in configuration and inline\nignores. If you used `# ty: ignore[invalid-return-type]` for a nonempty function that falls through,\nuse `# ty: ignore[missing-return-statement]` to keep suppressing that diagnostic.\n\n## Why is this bad?\n\nA caller relying on the annotated return type can receive a value of an unexpected type and fail at\nruntime.\n\n## Examples\n\n```python\nfrom collections.abc import Generator\n\n\ndef func(coinflip: bool) -> int:\n    if coinflip:\n        return \"a\"  # error: [invalid-return-statement]\n    else:\n        return  # error: [invalid-return-statement]\n\n\ndef gen_func() -> Generator[int, None, str]:\n    yield 42\n    return b\"oops, a bytestring\"  # error: [invalid-return-statement]\n```\n\nBoth functions below yield integers. Annotate `numbers` with `collections.abc.Generator[int]` and\n`async_numbers` with `collections.abc.AsyncGenerator[int]`.\n\n```python\nfrom collections.abc import Generator\n\n\n# error: [invalid-return-statement]\ndef numbers() -> int:\n    yield 1\n\n\n# error: [invalid-return-statement]\nasync def async_numbers() -> Generator[int]:\n    yield 1\n```",
           "default": "error",
           "oneOf": [
             {
@@ -1290,6 +1270,16 @@
           "title": "detects methods that override a superclass member without an `@override` annotation",
           "description": "## What it does\n\nChecks for methods that override a method or attribute in a superclass but are not decorated with\n`@override`.\n\nThis rule is disabled by default. Enable it to opt in to strict `@override` enforcement for a\nproject.\n\n## Exemptions\n\nOverriding `__init__`, `__new__`, `__init_subclass__`, or `__post_init__` does not require\n`@override`, even if the method is explicitly declared by a superclass.\n\n## Why is this bad?\n\nWithout an `@override` annotation, refactors can silently change whether a method is an override.\nRequiring `@override` on every override lets ty report when an intended override stops overriding\nanything, and when a method unexpectedly starts overriding a superclass member.\n\n## Example\n\n```toml\n[environment]\npython-version = \"3.12\"\n```\n\n```python\nfrom typing import override\n\n\nclass Parent:\n    def method(self) -> int:\n        return 1\n\n\nclass Child(Parent):\n    # when the rule is enabled\n    def method(self) -> int:  # error\n        return 2\n\n\nclass ExplicitChild(Parent):\n    @override\n    def method(self) -> int:  # fine\n        return 2\n```",
           "default": "ignore",
+          "oneOf": [
+            {
+              "$ref": "#/definitions/Level"
+            }
+          ]
+        },
+        "missing-return-in-stub-body": {
+          "title": "detects functions with stub-like bodies whose return type excludes `None`",
+          "description": "## What it does\n\nDetects functions with stub-like bodies whose return type excludes `None`. ty accepts the old name\n`empty-body` and warns about the rename in configuration and inline ignores.\n\nThe errors reported by this rule have the same motivation as the `missing-return-statement` rule.\nThe diagnostic exists as a separate error code to allow users to disable this rule while prototyping\ncode. While we strongly recommend enabling this rule if possible, users migrating from other type\ncheckers may also find it useful to temporarily disable this rule on some or all of their codebase\nif they find it results in a large number of diagnostics.\n\n## Why is this bad?\n\nA function with an empty body (containing only `...`, `pass`, or a docstring) will implicitly return\n`None` at runtime. Returning `None` when the return type is non-`None` is unsound, and will lead to\nty inferring incorrect types elsewhere.\n\nFunctions with empty bodies are permitted in certain contexts where they serve as declarations\nrather than implementations:\n\n- Functions in stub files (`.pyi`)\n- Methods in Protocol classes\n- Abstract methods decorated with `@abstractmethod`\n- Overload declarations decorated with `@overload`\n- Functions in `if TYPE_CHECKING` blocks\n\n## Examples\n\n```python\ndef foo() -> int: ...  # error: [missing-return-in-stub-body]\n\n\ndef bar() -> str:  # error: [missing-return-in-stub-body]\n    \"\"\"A function that does nothing.\"\"\"\n    pass\n```",
+          "default": "error",
           "oneOf": [
             {
               "$ref": "#/definitions/Level"

@@ -102,7 +102,7 @@ from typing_extensions import deprecated
 
 class C:
     @deprecated  # error: [invalid-argument-type] "LiteralString"
-    def __new__() -> T:  # error: [empty-body] "TypeVar"
+    def __new__() -> T:  # error: [missing-return-in-stub-body] "TypeVar"
         pass
 
 C()
